@@ -1,6 +1,16 @@
-import { Search, Bell, Mail } from 'lucide-react';
+import { Search, Bell, Mail, LogOut } from 'lucide-react';
+import { useAuth } from '../../context/AuthContext';
+import { useNavigate } from 'react-router-dom';
 
 export default function Header() {
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
+
+  const handleLogout = () => {
+    logout();
+    navigate('/login');
+  };
+
   return (
     <header className="bg-gradient-to-r from-[#FFE3AF] to-orange-50 border-b border-gray-200 px-6 py-4">
       <div className="flex items-center justify-between">
@@ -33,10 +43,20 @@ export default function Header() {
               className="w-10 h-10 rounded-full object-cover border-2 border-orange-400"
             />
             <div className="text-sm">
-              <div className="font-semibold text-gray-800">Admin</div>
-              <div className="text-gray-500 text-xs">Super Admin</div>
+              <div className="font-semibold text-gray-800">
+                {user?.name || 'Admin'}
+              </div>
+              <div className="text-gray-500 text-xs">{user?.email || 'admin@example.com'}</div>
             </div>
           </div>
+
+          <button
+            onClick={handleLogout}
+            className="ml-2 p-2 hover:bg-white rounded-lg transition-colors group"
+            title="Đăng xuất"
+          >
+            <LogOut className="w-6 h-6 text-gray-600 group-hover:text-orange-500" />
+          </button>
         </div>
       </div>
     </header>
