@@ -9,6 +9,7 @@ import Revenue from './pages/Revenue';
 import Posts from './pages/Posts';
 import Users from './pages/Users';
 import Settings from './pages/Settings';
+import Ads from './pages/Ads.tsx';
 
 function App() {
   return (
@@ -30,6 +31,7 @@ function App() {
             <Route path="revenue" element={<Revenue />} />
             <Route path="posts" element={<Posts />} />
             <Route path="users" element={<Users />} />
+            <Route path="ads" element={<Ads />} />
             <Route path="settings" element={<Settings />} />
           </Route>
         </Routes>

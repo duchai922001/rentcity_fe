@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom';
-import { Home, Wallet, DollarSign, FileText, Settings, Users } from 'lucide-react';
+import { Home, Wallet, DollarSign, FileText, Settings, Users, Megaphone } from 'lucide-react';
 
 export default function Sidebar() {
   const menuItems = [
@@ -8,6 +8,7 @@ export default function Sidebar() {
     { path: '/admin/revenue', icon: DollarSign, label: 'Dòng tiền' },
     { path: '/admin/posts', icon: FileText, label: 'Đăng bài' },
     { path: '/admin/users', icon: Users, label: 'Người dùng' },
+    { path: '/admin/ads', icon: Megaphone, label: 'Quảng cáo' },
     { path: '/admin/settings', icon: Settings, label: 'Quản lý' }
   ];
 

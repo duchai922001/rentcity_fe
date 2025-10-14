@@ -22,7 +22,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Kiểm tra xem user đã đăng nhập chưa (từ localStorage)
     const storedUser = localStorage.getItem('user');
     if (storedUser) {
       setUser(JSON.parse(storedUser));
@@ -31,7 +30,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const login = async (email: string, password: string) => {
-    // Giả lập API call - Thay thế bằng API thực tế
     return new Promise<void>((resolve, reject) => {
       setTimeout(() => {
         // Demo: chấp nhận bất kỳ email/password nào
