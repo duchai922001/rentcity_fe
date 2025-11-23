@@ -1,6 +1,7 @@
 import axios, { AxiosInstance, InternalAxiosRequestConfig } from "axios";
 
-const baseURL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
+const baseURL =
+  import.meta.env.VITE_API_BASE_URL || "https://rentcity-backend.onrender.com";
 const timeout = parseInt(import.meta.env.VITE_API_TIMEOUT || "50000", 10);
 
 const axiosInstance: AxiosInstance = axios.create({
