@@ -1,15 +1,23 @@
-import { NavLink } from 'react-router-dom';
-import { Home, Wallet, DollarSign, FileText, Settings, Users, Megaphone } from 'lucide-react';
+import { NavLink } from "react-router-dom";
+import {
+  Home,
+  Wallet,
+  DollarSign,
+  FileText,
+  Settings,
+  Users,
+  Megaphone,
+} from "lucide-react";
 
 export default function Sidebar() {
   const menuItems = [
-    { path: '/admin', icon: Home, label: 'Dashboard', exact: true },
-    { path: '/admin/wallet', icon: Wallet, label: 'Rút tiền' },
-    { path: '/admin/revenue', icon: DollarSign, label: 'Dòng tiền' },
-    { path: '/admin/posts', icon: FileText, label: 'Đăng bài' },
-    { path: '/admin/users', icon: Users, label: 'Người dùng' },
-    { path: '/admin/ads', icon: Megaphone, label: 'Quảng cáo' },
-    { path: '/admin/settings', icon: Settings, label: 'Quản lý' }
+    { path: "/admin", icon: Home, label: "Dashboard", exact: true },
+    { path: "/admin/wallet", icon: Wallet, label: "Rút tiền" },
+    // { path: '/admin/revenue', icon: DollarSign, label: 'Dòng tiền' },
+    { path: "/admin/posts", icon: FileText, label: "Đăng bài" },
+    { path: "/admin/users", icon: Users, label: "Người dùng" },
+    { path: "/admin/packages", icon: Megaphone, label: "Gói quảng cáo" },
+    { path: "/admin/settings", icon: Settings, label: "Quản lý" },
   ];
 
   return (
@@ -33,8 +41,8 @@ export default function Sidebar() {
             className={({ isActive }) =>
               `flex items-center gap-3 px-4 py-3 rounded-lg mb-2 transition-colors ${
                 isActive
-                  ? 'bg-gradient-to-r from-amber-400 to-orange-500 text-white'
-                  : 'text-gray-300 hover:bg-gray-700'
+                  ? "bg-gradient-to-r from-amber-400 to-orange-500 text-white"
+                  : "text-gray-300 hover:bg-gray-700"
               }`
             }
           >

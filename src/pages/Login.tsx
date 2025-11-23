@@ -1,28 +1,34 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Home } from 'lucide-react';
-import { useAuth } from '../context/AuthContext';
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { Home } from "lucide-react";
+import { useAuth } from "../context/AuthContext";
+import { AuthService } from "../services/auth.service";
 
 const Login = () => {
-  const [phone, setPhone] = useState(''); // ✅ đổi từ email → phone
-  const [password, setPassword] = useState('');
+  const [phone, setPhone] = useState(""); // ✅ đổi từ email → phone
+  const [password, setPassword] = useState("");
   const [rememberMe, setRememberMe] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
   const navigate = useNavigate();
-  const { login } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
+    setError("");
     setIsLoading(true);
 
     try {
-      await login(phone, password);
-      navigate('/admin');
+      const res = await AuthService.login({ phone, password });
+
+      localStorage.setItem("access_token", res.access_token);
+      localStorage.setItem("user", JSON.stringify(res.user));
+
+      console.log("Đăng nhập thành công:", res);
+
+      navigate("/admin");
     } catch (err) {
-      setError('Đăng nhập thất bại. Vui lòng kiểm tra lại thông tin.');
+      setError("Đăng nhập thất bại. Vui lòng kiểm tra lại thông tin.");
     } finally {
       setIsLoading(false);
     }
@@ -50,7 +56,9 @@ const Login = () => {
               </div>
             </div>
 
-            <h2 className="text-3xl font-bold text-gray-800 mb-2">ĐĂNG NHẬP EASY RENT</h2>
+            <h2 className="text-3xl font-bold text-gray-800 mb-2">
+              ĐĂNG NHẬP EASY RENT
+            </h2>
 
             <form onSubmit={handleSubmit} className="space-y-6 mt-8">
               <div>
@@ -76,9 +84,7 @@ const Login = () => {
                 />
               </div>
 
-              {error && (
-                <div className="text-red-500 text-sm">{error}</div>
-              )}
+              {error && <div className="text-red-500 text-sm">{error}</div>}
 
               <div className="flex items-center">
                 <input
@@ -98,7 +104,7 @@ const Login = () => {
                 disabled={isLoading}
                 className="w-full bg-gradient-to-r from-orange-400 to-yellow-400 text-white font-semibold py-3 rounded-full hover:shadow-lg transition-shadow disabled:opacity-50"
               >
-                {isLoading ? 'Đang xử lý...' : 'ĐĂNG NHẬP'}
+                {isLoading ? "Đang xử lý..." : "ĐĂNG NHẬP"}
               </button>
             </form>
           </div>

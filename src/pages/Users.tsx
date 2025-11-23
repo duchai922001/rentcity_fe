@@ -1,4 +1,5 @@
-import { useState } from "react";
+// src/components/Users.tsx
+import React, { useEffect, useMemo, useState } from "react";
 import {
   Search,
   Filter,
@@ -7,151 +8,148 @@ import {
   Trash2,
   MoreVertical,
   UserCheck,
-  UserX,
-  Mail,
   Phone,
 } from "lucide-react";
+import { UserService } from "../services/user.service"; // path theo project của bạn
+import { AuthService } from "../services/auth.service"; // dùng để register/create user
+import {
+  Modal,
+  Form,
+  Input,
+  Select,
+  Switch,
+  Button,
+  message,
+  Spin,
+} from "antd";
 
-interface User {
-  id: string;
-  name: string;
-  email: string;
+type Role = "seeker" | "owner" | "admin" | "landlord" | "tenant"; // map nếu cần
+type Status = "active" | "inactive" | "banned";
+
+interface UserItem {
+  id: number | string;
+  firstName: string;
+  lastName: string;
   phone: string;
-  role: "landlord" | "tenant" | "admin";
-  status: "active" | "inactive" | "banned";
-  avatar: string;
-  joinDate: string;
-  totalPosts: number;
-  totalTransactions: number;
+  role: Role;
+  active: boolean;
+  address?: string | null;
+  createdAt?: string;
+  // optional stats
+  totalPosts?: number;
+  totalTransactions?: number;
 }
 
-const users: User[] = [
-  {
-    id: "1",
-    name: "Nguyễn Văn A",
-    email: "nguyenvana@example.com",
-    phone: "0901234567",
-    role: "landlord",
-    status: "active",
-    avatar:
-      "https://images.pexels.com/photos/2379004/pexels-photo-2379004.jpeg?auto=compress&cs=tinysrgb&w=100",
-    joinDate: "15/01/2024",
-    totalPosts: 12,
-    totalTransactions: 5,
-  },
-  {
-    id: "2",
-    name: "Trần Thị B",
-    email: "tranthib@example.com",
-    phone: "0912345678",
-    role: "tenant",
-    status: "active",
-    avatar:
-      "https://images.pexels.com/photos/1239291/pexels-photo-1239291.jpeg?auto=compress&cs=tinysrgb&w=100",
-    joinDate: "20/02/2024",
-    totalPosts: 3,
-    totalTransactions: 8,
-  },
-  {
-    id: "3",
-    name: "Lê Văn C",
-    email: "levanc@example.com",
-    phone: "0923456789",
-    role: "landlord",
-    status: "inactive",
-    avatar:
-      "https://images.pexels.com/photos/614810/pexels-photo-614810.jpeg?auto=compress&cs=tinysrgb&w=100",
-    joinDate: "10/03/2024",
-    totalPosts: 7,
-    totalTransactions: 2,
-  },
-  {
-    id: "4",
-    name: "Phạm Thị D",
-    email: "phamthid@example.com",
-    phone: "0934567890",
-    role: "tenant",
-    status: "active",
-    avatar:
-      "https://images.pexels.com/photos/774909/pexels-photo-774909.jpeg?auto=compress&cs=tinysrgb&w=100",
-    joinDate: "25/03/2024",
-    totalPosts: 0,
-    totalTransactions: 15,
-  },
-  {
-    id: "5",
-    name: "Hoàng Văn E",
-    email: "hoangvane@example.com",
-    phone: "0945678901",
-    role: "landlord",
-    status: "banned",
-    avatar:
-      "https://images.pexels.com/photos/1222271/pexels-photo-1222271.jpeg?auto=compress&cs=tinysrgb&w=100",
-    joinDate: "05/04/2024",
-    totalPosts: 25,
-    totalTransactions: 3,
-  },
-  {
-    id: "6",
-    name: "Vũ Thị F",
-    email: "vuthif@example.com",
-    phone: "0956789012",
-    role: "tenant",
-    status: "active",
-    avatar:
-      "https://images.pexels.com/photos/1181690/pexels-photo-1181690.jpeg?auto=compress&cs=tinysrgb&w=100",
-    joinDate: "12/04/2024",
-    totalPosts: 1,
-    totalTransactions: 6,
-  },
-];
-
-const roleLabels = {
+const ROLE_LABELS: Record<string, string> = {
+  owner: "Chủ nhà",
   landlord: "Chủ nhà",
+  seeker: "Người thuê",
   tenant: "Người thuê",
   admin: "Quản trị viên",
 };
 
-const statusConfig = {
-  active: {
-    label: "Hoạt động",
-    color: "bg-green-100 text-green-700",
-    icon: UserCheck,
-  },
-  inactive: {
-    label: "Không hoạt động",
-    color: "bg-gray-100 text-gray-700",
-    icon: UserX,
-  },
-  banned: {
-    label: "Bị cấm",
-    color: "bg-red-100 text-red-700",
-    icon: UserX,
-  },
-};
-
 export default function Users() {
+  const [users, setUsers] = useState<UserItem[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+
   const [searchTerm, setSearchTerm] = useState("");
   const [filterRole, setFilterRole] = useState<string>("all");
   const [filterStatus, setFilterStatus] = useState<string>("all");
 
-  const filteredUsers = users.filter((user) => {
-    const matchesSearch =
-      user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.phone.includes(searchTerm);
-    const matchesRole = filterRole === "all" || user.role === filterRole;
-    const matchesStatus =
-      filterStatus === "all" || user.status === filterStatus;
+  // pagination (FE)
+  const [currentPage, setCurrentPage] = useState(1);
+  const PAGE_SIZE = 5;
 
-    return matchesSearch && matchesRole && matchesStatus;
-  });
+  // Modal create
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [form] = Form.useForm();
 
-  const stats = {
-    total: users.length,
-    active: users.filter((u) => u.status === "active").length,
-    landlords: users.filter((u) => u.role === "landlord").length,
-    tenants: users.filter((u) => u.role === "tenant").length,
+  useEffect(() => {
+    loadUsers();
+  }, []);
+
+  const loadUsers = async () => {
+    setLoading(true);
+    try {
+      const res = await UserService.getAllUsers();
+      // Nếu API trả object { data: [...] } thì đổi thành res.data
+      setUsers(Array.isArray(res) ? res : res?.data ?? []);
+    } catch (error) {
+      console.error("Lỗi khi tải user:", error);
+      message.error("Không tải được danh sách người dùng");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Derived filtered list
+  const filteredUsers = useMemo(() => {
+    return users.filter((u) => {
+      const fullName = `${u.firstName} ${u.lastName}`.toLowerCase();
+      const matchesSearch =
+        fullName.includes(searchTerm.toLowerCase()) ||
+        u.phone.includes(searchTerm);
+      const matchesRole = filterRole === "all" || u.role === filterRole;
+      const matchesStatus =
+        filterStatus === "all" ||
+        (filterStatus === "active" && u.active) ||
+        (filterStatus === "inactive" && !u.active) ||
+        (filterStatus === "banned" && (u as any).status === "banned"); // if you have banned field
+
+      return matchesSearch && matchesRole && matchesStatus;
+    });
+  }, [users, searchTerm, filterRole, filterStatus]);
+
+  // Pagination slices
+  const total = filteredUsers.length;
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const paginatedUsers = filteredUsers.slice(
+    (currentPage - 1) * PAGE_SIZE,
+    currentPage * PAGE_SIZE
+  );
+
+  // When filters change, reset page to 1
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filterRole, filterStatus, searchTerm]);
+
+  // Create user (register)
+  const openCreateModal = () => {
+    form.resetFields();
+    setIsModalOpen(true);
+  };
+
+  const handleCreate = async (values: any) => {
+    // Values: { firstName, lastName, phone, password, role, address, active }
+    setSubmitting(true);
+    try {
+      // call AuthService.register (your service defined earlier)
+      await AuthService.register({
+        firstName: values.firstName,
+        lastName: values.lastName,
+        phone: values.phone,
+        password: values.password,
+        role: values.role,
+        address: values.address || null,
+        active: values.active ?? true,
+      });
+
+      message.success("Tạo người dùng thành công");
+      setIsModalOpen(false);
+      await loadUsers();
+    } catch (err) {
+      console.error("Lỗi tạo user:", err);
+      message.error("Tạo người dùng thất bại");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleDelete = async (id: number | string) => {
+    // If you have delete API, call it here; otherwise just show message.
+    // Example: await UserService.deleteUser(id)
+    message.info("Chức năng xóa chưa được triển khai ở FE - gọi API tương ứng");
   };
 
   return (
@@ -165,10 +163,16 @@ export default function Users() {
             Quản lý tất cả người dùng trong hệ thống
           </p>
         </div>
-        <button className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-orange-400 to-orange-500 text-white rounded-lg font-medium hover:shadow-lg transition-shadow">
-          <Plus className="w-5 h-5" />
-          Thêm người dùng
-        </button>
+
+        <div className="flex items-center gap-3">
+          <Button
+            type="primary"
+            icon={<Plus className="w-4 h-4" />}
+            onClick={openCreateModal}
+          >
+            Thêm người dùng
+          </Button>
+        </div>
       </div>
 
       {/* Statistics Cards */}
@@ -177,7 +181,7 @@ export default function Users() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-600 mb-1">Tổng người dùng</p>
-              <p className="text-3xl font-bold text-gray-800">{stats.total}</p>
+              <p className="text-3xl font-bold text-gray-800">{users.length}</p>
             </div>
             <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
               <UserCheck className="w-6 h-6 text-blue-600" />
@@ -190,7 +194,7 @@ export default function Users() {
             <div>
               <p className="text-sm text-gray-600 mb-1">Đang hoạt động</p>
               <p className="text-3xl font-bold text-green-600">
-                {stats.active}
+                {users.filter((u) => u.active).length}
               </p>
             </div>
             <div className="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center">
@@ -204,7 +208,11 @@ export default function Users() {
             <div>
               <p className="text-sm text-gray-600 mb-1">Chủ nhà</p>
               <p className="text-3xl font-bold text-orange-600">
-                {stats.landlords}
+                {
+                  users.filter(
+                    (u) => u.role === "owner" || u.role === "landlord"
+                  ).length
+                }
               </p>
             </div>
             <div className="w-12 h-12 bg-orange-100 rounded-xl flex items-center justify-center">
@@ -218,7 +226,11 @@ export default function Users() {
             <div>
               <p className="text-sm text-gray-600 mb-1">Người thuê</p>
               <p className="text-3xl font-bold text-purple-600">
-                {stats.tenants}
+                {
+                  users.filter(
+                    (u) => u.role === "seeker" || u.role === "tenant"
+                  ).length
+                }
               </p>
             </div>
             <div className="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center">
@@ -235,14 +247,14 @@ export default function Users() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
             <input
               type="text"
-              placeholder="Tìm kiếm theo tên, email, số điện thoại..."
+              placeholder="Tìm kiếm theo tên, số điện thoại..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-400"
             />
           </div>
 
-          <div className="flex gap-3">
+          <div className="flex gap-3 items-center">
             <div className="relative">
               <Filter className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
               <select
@@ -252,7 +264,9 @@ export default function Users() {
                 className="pl-10 pr-8 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-400 bg-white"
               >
                 <option value="all">Tất cả vai trò</option>
+                <option value="owner">Chủ nhà</option>
                 <option value="landlord">Chủ nhà</option>
+                <option value="seeker">Người thuê</option>
                 <option value="tenant">Người thuê</option>
                 <option value="admin">Admin</option>
               </select>
@@ -291,20 +305,23 @@ export default function Users() {
                 <th className="text-left py-4 px-6 text-sm font-semibold text-gray-700">
                   Trạng thái
                 </th>
-                <th className="text-left py-4 px-6 text-sm font-semibold text-gray-700">
-                  Thống kê
-                </th>
+
                 <th className="text-left py-4 px-6 text-sm font-semibold text-gray-700">
                   Ngày tham gia
                 </th>
-                <th className="text-center py-4 px-6 text-sm font-semibold text-gray-700">
+                {/* <th className="text-center py-4 px-6 text-sm font-semibold text-gray-700">
                   Hành động
-                </th>
+                </th> */}
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {filteredUsers.map((user) => {
-                const StatusIcon = statusConfig[user.status].icon;
+              {paginatedUsers.map((user) => {
+                const statusLabel = user.active
+                  ? "Hoạt động"
+                  : "Không hoạt động";
+                const statusColor = user.active
+                  ? "bg-green-100 text-green-700"
+                  : "bg-gray-100 text-gray-700";
                 return (
                   <tr
                     key={user.id}
@@ -312,14 +329,12 @@ export default function Users() {
                   >
                     <td className="py-4 px-6">
                       <div className="flex items-center gap-3">
-                        <img
-                          src={user.avatar}
-                          alt={user.name}
-                          className="w-12 h-12 rounded-full object-cover border-2 border-orange-200"
-                        />
+                        <div className="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center text-xl text-gray-500 border-2 border-orange-200">
+                          {user.firstName?.[0] ?? "U"}
+                        </div>
                         <div>
                           <p className="font-semibold text-gray-800">
-                            {user.name}
+                            {user.firstName} {user.lastName}
                           </p>
                           <p className="text-sm text-gray-500">ID: {user.id}</p>
                         </div>
@@ -328,10 +343,6 @@ export default function Users() {
 
                     <td className="py-4 px-6">
                       <div className="space-y-1">
-                        <div className="flex items-center gap-2 text-sm text-gray-600">
-                          <Mail className="w-4 h-4 text-gray-400" />
-                          {user.email}
-                        </div>
                         <div className="flex items-center gap-2 text-sm text-gray-600">
                           <Phone className="w-4 h-4 text-gray-400" />
                           {user.phone}
@@ -342,60 +353,39 @@ export default function Users() {
                     <td className="py-4 px-6 w-40">
                       <span
                         className={`px-3 py-1 rounded-full text-sm font-medium ${
-                          user.role === "landlord"
+                          user.role === "owner" || user.role === "landlord"
                             ? "bg-orange-100 text-orange-700"
-                            : user.role === "tenant"
+                            : user.role === "seeker" || user.role === "tenant"
                             ? "bg-purple-100 text-purple-700"
                             : "bg-blue-100 text-blue-700"
                         }`}
                       >
-                        {roleLabels[user.role]}
+                        {ROLE_LABELS[user.role] ?? user.role}
                       </span>
                     </td>
 
                     <td className="py-4 px-6">
                       <div className="flex items-center gap-2">
-                        <StatusIcon
+                        <UserCheck
                           className={`w-5 h-5 ${
-                            user.status === "active"
-                              ? "text-green-600"
-                              : user.status === "inactive"
-                              ? "text-gray-600"
-                              : "text-red-600"
+                            user.active ? "text-green-600" : "text-gray-600"
                           }`}
                         />
                         <span
-                          className={`px-3 py-1 rounded-full text-sm font-medium ${
-                            statusConfig[user.status].color
-                          }`}
+                          className={`px-3 py-1 rounded-full text-sm font-medium ${statusColor}`}
                         >
-                          {statusConfig[user.status].label}
+                          {statusLabel}
                         </span>
                       </div>
                     </td>
 
-                    <td className="py-4 px-6">
-                      <div className="space-y-1 text-sm">
-                        <p className="text-gray-600">
-                          <span className="font-medium text-gray-800">
-                            {user.totalPosts}
-                          </span>{" "}
-                          bài đăng
-                        </p>
-                        <p className="text-gray-600">
-                          <span className="font-medium text-gray-800">
-                            {user.totalTransactions}
-                          </span>{" "}
-                          giao dịch
-                        </p>
-                      </div>
-                    </td>
-
                     <td className="py-4 px-6 text-sm text-gray-600">
-                      {user.joinDate}
+                      {user.createdAt
+                        ? new Date(user.createdAt).toLocaleDateString()
+                        : "-"}
                     </td>
 
-                    <td className="py-4 px-6">
+                    {/* <td className="py-4 px-6">
                       <div className="flex items-center justify-center gap-2">
                         <button
                           aria-label="Chỉnh sửa người dùng"
@@ -405,6 +395,7 @@ export default function Users() {
                         </button>
                         <button
                           aria-label="Xóa người dùng"
+                          onClick={() => handleDelete(user.id)}
                           className="p-2 hover:bg-red-50 rounded-lg transition-colors group"
                         >
                           <Trash2 className="w-5 h-5 text-gray-600 group-hover:text-red-600" />
@@ -416,7 +407,7 @@ export default function Users() {
                           <MoreVertical className="w-5 h-5 text-gray-600" />
                         </button>
                       </div>
-                    </td>
+                    </td> */}
                   </tr>
                 );
               })}
@@ -427,29 +418,131 @@ export default function Users() {
         {/* Pagination */}
         <div className="flex items-center justify-between px-6 py-4 border-t border-gray-200">
           <p className="text-sm text-gray-600">
-            Hiển thị <span className="font-medium">{filteredUsers.length}</span>{" "}
-            trong tổng số <span className="font-medium">{users.length}</span>{" "}
-            người dùng
+            Hiển thị{" "}
+            <span className="font-medium">{paginatedUsers.length}</span> trong
+            tổng số <span className="font-medium">{filteredUsers.length}</span>{" "}
+            người dùng (từ {users.length})
           </p>
           <div className="flex items-center gap-2">
-            <button className="px-3 py-1 rounded-lg border border-gray-300 text-sm hover:bg-gray-50 transition-colors">
+            <button
+              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+              disabled={currentPage === 1}
+              className="px-3 py-1 rounded-lg border border-gray-300 text-sm hover:bg-gray-50 transition-colors disabled:opacity-40"
+            >
               « Trước
             </button>
-            <button className="px-3 py-1 rounded-lg bg-orange-500 text-white text-sm">
-              1
-            </button>
-            <button className="px-3 py-1 rounded-lg border border-gray-300 text-sm hover:bg-gray-50 transition-colors">
-              2
-            </button>
-            <button className="px-3 py-1 rounded-lg border border-gray-300 text-sm hover:bg-gray-50 transition-colors">
-              3
-            </button>
-            <button className="px-3 py-1 rounded-lg border border-gray-300 text-sm hover:bg-gray-50 transition-colors">
+
+            {/* page numbers */}
+            {Array.from({ length: totalPages }).map((_, i) => (
+              <button
+                key={i}
+                onClick={() => setCurrentPage(i + 1)}
+                className={`px-3 py-1 rounded-lg border text-sm ${
+                  currentPage === i + 1
+                    ? "bg-orange-500 text-white"
+                    : "border-gray-300 hover:bg-gray-50"
+                }`}
+              >
+                {i + 1}
+              </button>
+            ))}
+
+            <button
+              onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+              disabled={currentPage === totalPages}
+              className="px-3 py-1 rounded-lg border border-gray-300 text-sm hover:bg-gray-50 transition-colors disabled:opacity-40"
+            >
               Sau »
             </button>
           </div>
         </div>
       </div>
+
+      {/* Create User Modal */}
+      <Modal
+        title="Tạo người dùng mới"
+        open={isModalOpen}
+        onCancel={() => setIsModalOpen(false)}
+        footer={null}
+        destroyOnClose
+      >
+        <Form
+          form={form}
+          layout="vertical"
+          onFinish={handleCreate}
+          initialValues={{ role: "seeker", active: true }}
+        >
+          <Form.Item
+            name="firstName"
+            label="Họ"
+            rules={[{ required: true, message: "Vui lòng nhập họ" }]}
+          >
+            <Input placeholder="Nguyễn" />
+          </Form.Item>
+
+          <Form.Item
+            name="lastName"
+            label="Tên"
+            rules={[{ required: true, message: "Vui lòng nhập tên" }]}
+          >
+            <Input placeholder="Văn A" />
+          </Form.Item>
+
+          <Form.Item
+            name="phone"
+            label="Số điện thoại"
+            rules={[
+              { required: true, message: "Vui lòng nhập số điện thoại" },
+              {
+                pattern: /^[0-9]{9,11}$/,
+                message: "Số điện thoại không hợp lệ",
+              },
+            ]}
+          >
+            <Input placeholder="09xxxxxxxx" />
+          </Form.Item>
+
+          <Form.Item
+            name="password"
+            label="Mật khẩu"
+            rules={[
+              { required: true, message: "Vui lòng nhập mật khẩu (>=6 ký tự)" },
+              { min: 6 },
+            ]}
+          >
+            <Input.Password />
+          </Form.Item>
+
+          <Form.Item name="role" label="Vai trò" rules={[{ required: true }]}>
+            <Select>
+              <Select.Option value="seeker">Người thuê</Select.Option>
+              <Select.Option value="owner">Chủ nhà</Select.Option>
+              <Select.Option value="admin">Admin</Select.Option>
+            </Select>
+          </Form.Item>
+
+          <Form.Item name="address" label="Địa chỉ (tùy chọn)">
+            <Input.TextArea rows={2} />
+          </Form.Item>
+
+          <Form.Item name="active" label="Kích hoạt" valuePropName="checked">
+            <Switch />
+          </Form.Item>
+
+          <div className="flex justify-end gap-2">
+            <Button onClick={() => setIsModalOpen(false)}>Hủy</Button>
+            <Button type="primary" htmlType="submit" loading={submitting}>
+              Tạo
+            </Button>
+          </div>
+        </Form>
+      </Modal>
+
+      {loading && (
+        <div className="fixed inset-0 left-0 top-0 flex items-center justify-center bg-black/20">
+          <Spin />
+        </div>
+      )}
     </div>
   );
 }
