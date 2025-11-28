@@ -12,8 +12,16 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
+  Legend,
 } from "recharts";
-import { TrendingUp, TrendingDown } from "lucide-react";
+import {
+  TrendingUp,
+  TrendingDown,
+  Users,
+  BarChart3,
+  DollarSign,
+} from "lucide-react";
+import { motion } from "framer-motion";
 import { DashboardService } from "../services/dashboard.service";
 
 interface Activity {
@@ -33,6 +41,7 @@ interface RevenueItem {
   month: string;
   revenue: number;
 }
+
 export default function Dashboard() {
   const [weeklyData, setWeeklyData] = useState<
     { name: string; value: number }[]
@@ -44,12 +53,12 @@ export default function Dashboard() {
   const [totalUsers, setTotalUsers] = useState<number>(0);
   const [activities, setActivities] = useState<Activity[]>([]);
   const [revenueByMonth, setRevenueByMonth] = useState<RevenueItem[]>([]);
+
   useEffect(() => {
     const fetchData = async () => {
       try {
         const data = await DashboardService.getDashboard();
 
-        // ===== WEEKLY POSTS =====
         const weekMap: Record<string, number> = {
           CN: 0,
           T2: 0,
@@ -79,7 +88,6 @@ export default function Dashboard() {
           Object.entries(weekMap).map(([name, value]) => ({ name, value }))
         );
 
-        // ===== YEARLY POSTS =====
         const monthOrder = [
           "Jan",
           "Feb",
@@ -95,61 +103,56 @@ export default function Dashboard() {
           "Dec",
         ];
 
-        const yearly = monthOrder.map((m) => {
-          const found = data.yearlyPosts?.find((y: any) => y.month === m);
-          return { name: m, value: found ? Number(found.count) : 0 };
-        });
-        setYearlyData(yearly);
+        setYearlyData(
+          monthOrder.map((m) => {
+            const found = data.yearlyPosts?.find((y: any) => y.month === m);
+            return { name: m, value: found ? Number(found.count) : 0 };
+          })
+        );
 
-        // ===== PIE - STATUS POSTS =====
         const colors: Record<string, string> = {
           active: "#22c55e",
           pending: "#f59e0b",
           hidden: "#ef4444",
         };
 
-        const pie = data.postStatusStats?.map((item: any) => ({
-          name:
-            item.status === "active"
-              ? "Đã cho thuê"
-              : item.status === "pending"
-              ? "Chưa cho thuê"
-              : "Căn hộ tồn",
-          value: Number(item.count),
-          color: colors[item.status] || "#888",
-        }));
+        setPieData(
+          data.postStatusStats?.map((item: any) => ({
+            name:
+              item.status === "active"
+                ? "Chưa cho thuê"
+                : item.status === "pending"
+                ? "Đã cho thuê"
+                : "Căn hộ tồn",
+            value: Number(item.count),
+            color: colors[item.status] || "#888",
+          })) || []
+        );
 
-        setPieData(pie || []);
-
-        // ===== TOTAL USERS =====
         setTotalUsers(Number(data.totalUsers || 0));
 
-        // ===== ACTIVITIES =====
-        const acts = data.activities?.map((act: any, idx: number) => {
-          let title = "Hoạt động mới";
-
-          if (act.amount) title = "Yêu cầu rút tiền";
-          else if (act.startDate) title = "Hợp đồng mới";
-          else if (act.appointmentDate) title = "Đặt lịch xem phòng";
-
-          return {
+        setActivities(
+          data.activities?.map((act: any, idx: number) => ({
             id: idx,
-            title,
+            title: act.amount
+              ? "Yêu cầu rút tiền"
+              : act.startDate
+              ? "Hợp đồng mới"
+              : "Đặt lịch xem phòng",
             code: `#${act.id}`,
             time: new Date(act.createdAt).toLocaleString(),
             status: act.status || "new",
-          };
-        });
+          })) || []
+        );
 
-        setActivities(acts || []);
-        const revenue = data.revenueByMonth?.map((item: any) => ({
-          month: item.month,
-          revenue: Number(item.revenue),
-        }));
-
-        setRevenueByMonth(revenue || []);
-      } catch (error) {
-        console.error("Dashboard error:", error);
+        setRevenueByMonth(
+          data.revenueByMonth?.map((item: any) => ({
+            month: item.month,
+            revenue: Number(item.revenue),
+          })) || []
+        );
+      } catch (e) {
+        console.error(e);
       }
     };
 
@@ -157,113 +160,119 @@ export default function Dashboard() {
   }, []);
 
   return (
-    <div className="space-y-6">
-      <h1 className="text-2xl font-bold text-gray-800">Dashboard</h1>
+    <div className="space-y-8 p-6 bg-gradient-to-br from-slate-50 to-slate-100 min-h-screen">
+      <motion.h1
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="text-3xl font-bold text-gray-800"
+      >
+        ✨ Admin Dashboard
+      </motion.h1>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Weekly Chart */}
-        <div className="bg-white rounded-xl shadow-sm p-6">
-          <h2 className="text-lg font-semibold mb-4">Bài đăng trong tuần</h2>
-          <ResponsiveContainer width="100%" height={250}>
+      {/* STAT CARDS */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="bg-gradient-to-r from-indigo-500 to-purple-600 text-white p-6 rounded-2xl shadow-xl">
+          <Users className="mb-2" />
+          <p className="text-sm">Tổng người dùng</p>
+          <h2 className="text-3xl font-bold">{totalUsers}</h2>
+        </div>
+        <div className="bg-gradient-to-r from-emerald-500 to-teal-600 text-white p-6 rounded-2xl shadow-xl">
+          <DollarSign className="mb-2" />
+          <p className="text-sm">Doanh thu tháng</p>
+          <h2 className="text-3xl font-bold">
+            {revenueByMonth.reduce((a, b) => a + b.revenue, 0).toLocaleString()}
+            đ
+          </h2>
+        </div>
+        <div className="bg-gradient-to-r from-orange-500 to-pink-500 text-white p-6 rounded-2xl shadow-xl">
+          <BarChart3 className="mb-2" />
+          <p className="text-sm">Tổng bài đăng</p>
+          <h2 className="text-3xl font-bold">
+            {yearlyData.reduce((a, b) => a + b.value, 0)}
+          </h2>
+        </div>
+      </div>
+
+      {/* CHARTS */}
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+        <div className="xl:col-span-2 bg-white rounded-2xl shadow-lg p-6">
+          <h2 className="font-semibold text-lg mb-4">Bài đăng theo tuần</h2>
+          <ResponsiveContainer width="100%" height={260}>
             <BarChart data={weeklyData}>
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="name" />
               <YAxis />
               <Tooltip />
-              <Bar dataKey="value" fill="#f97316" radius={[6, 6, 0, 0]} />
+              <Bar dataKey="value" fill="#6366f1" radius={[10, 10, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </div>
 
-        {/* Pie Chart */}
-        <div className="bg-white rounded-xl shadow-sm p-6">
-          <h2 className="text-lg font-semibold mb-4">Trạng thái bài đăng</h2>
-          <ResponsiveContainer width="100%" height={250}>
+        <div className="bg-white rounded-2xl shadow-lg p-6">
+          <h2 className="font-semibold text-lg mb-4">Trạng thái bài đăng</h2>
+          <ResponsiveContainer width="100%" height={260}>
             <PieChart>
               <Pie
                 data={pieData}
                 dataKey="value"
-                cx="50%"
-                cy="50%"
-                innerRadius={60}
                 outerRadius={100}
+                innerRadius={60}
               >
                 {pieData.map((item, index) => (
                   <Cell key={index} fill={item.color} />
                 ))}
               </Pie>
+              <Legend />
               <Tooltip />
             </PieChart>
           </ResponsiveContainer>
         </div>
       </div>
-      <div className="bg-white rounded-xl shadow-sm p-6">
-        <h2 className="text-lg font-semibold mb-4">Doanh thu theo tháng</h2>
-        <ResponsiveContainer width="100%" height={280}>
-          <BarChart data={revenueByMonth}>
+
+      <div className="bg-white rounded-2xl shadow-lg p-6">
+        <h2 className="font-semibold text-lg mb-4">💰 Doanh thu theo tháng</h2>
+        <ResponsiveContainer width="100%" height={300}>
+          <LineChart data={revenueByMonth}>
             <CartesianGrid strokeDasharray="3 3" />
             <XAxis dataKey="month" />
-            <YAxis />
-            <Tooltip
-              formatter={(value: number) =>
-                value.toLocaleString("vi-VN") + " đ"
-              }
-            />
-            <Bar dataKey="revenue" fill="#22c55e" radius={[6, 6, 0, 0]} />
-          </BarChart>
-        </ResponsiveContainer>
-      </div>
-
-      {/* Yearly Chart */}
-      <div className="bg-white rounded-xl shadow-sm p-6">
-        <h2 className="text-lg font-semibold mb-4">Bài đăng theo năm</h2>
-        <ResponsiveContainer width="100%" height={250}>
-          <LineChart data={yearlyData}>
-            <CartesianGrid strokeDasharray="3 3" />
-            <XAxis dataKey="name" />
             <YAxis />
             <Tooltip />
             <Line
               type="monotone"
-              dataKey="value"
-              stroke="#f97316"
+              dataKey="revenue"
+              stroke="#22c55e"
               strokeWidth={3}
             />
           </LineChart>
         </ResponsiveContainer>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Total Users */}
-        <div className="bg-white rounded-xl shadow-sm p-6">
-          <h2 className="text-lg font-semibold">Tổng người dùng</h2>
-          <p className="text-3xl font-bold mt-2">{totalUsers}</p>
-        </div>
-
-        {/* Activities */}
-        <div className="bg-white rounded-xl shadow-sm p-6">
-          <h2 className="text-lg font-semibold mb-4">Hoạt động gần đây</h2>
-          <div className="space-y-3">
-            {activities.map((activity) => (
-              <div
-                key={activity.id}
-                className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-50"
-              >
-                <div className="w-10 h-10 flex items-center justify-center rounded-lg bg-gray-100">
+      {/* ACTIVITIES */}
+      <div className="bg-white rounded-2xl shadow-lg p-6">
+        <h2 className="font-semibold text-lg mb-4">🕒 Hoạt động gần đây</h2>
+        <div className="space-y-4">
+          {activities.map((activity) => (
+            <motion.div
+              key={activity.id}
+              whileHover={{ scale: 1.02 }}
+              className="flex items-center justify-between p-4 rounded-xl border hover:shadow-md transition"
+            >
+              <div className="flex items-center gap-4">
+                <div className="p-3 rounded-full bg-gray-100">
                   {activity.status === "active" ? (
                     <TrendingUp className="text-green-600" />
                   ) : (
-                    <TrendingDown className="text-gray-600" />
+                    <TrendingDown className="text-gray-500" />
                   )}
                 </div>
-                <div className="flex-1">
-                  <p className="font-medium">{activity.title}</p>
-                  <p className="text-xs text-gray-500">{activity.code}</p>
+                <div>
+                  <p className="font-semibold">{activity.title}</p>
+                  <span className="text-sm text-gray-500">{activity.code}</span>
                 </div>
-                <span className="text-xs text-gray-400">{activity.time}</span>
               </div>
-            ))}
-          </div>
+              <span className="text-sm text-gray-400">{activity.time}</span>
+            </motion.div>
+          ))}
         </div>
       </div>
     </div>
